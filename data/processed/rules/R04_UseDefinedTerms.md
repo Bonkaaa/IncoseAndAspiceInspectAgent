@@ -23,9 +23,8 @@ Most languages are rich with words having several synonyms, each with a subtly d
 
 A standard should be agreed upon to make the use of glossary terms identifiable in the need and requirements text statements; for example, glossary items may be capitalized and multiple words 
 in single terms joined by an underscore (e.g., “Current_Time”).  This is essential for consistency to avoid using the word with its general meaning without context.  This is the convention used in the examples in this section.  This standard should be implemented and enforced within all SE tools used by the project to help ensure consistency. 
-### Definition
 
-s of terms used within needs and requirement statements must be agreed to, documented, and used consistently throughout the project and all SE artifacts developed during all lifecycle activities.
+Definitions of terms used within needs and requirement statements must be agreed to, documented, and used consistently throughout the project and all SE artifacts developed during all lifecycle activities. 
 
 For cases where needs and requirements will be translated into a different language, it is helpful to develop a “translation matrix” where terms in the originating language are listed along with the acceptable term to be used in the target language such that the original intent is communicated. The use of this matrix will help ensure consistency in the translations when multiple people are involved in the translations over time. 
 

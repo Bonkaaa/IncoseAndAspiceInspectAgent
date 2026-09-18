@@ -20,9 +20,8 @@ Define a convention for logical expressions such as “[X AND Y]”, “[X OR Y]
 
 As with the other rules and characteristics, we want to keep requirement statements as one thought with singular statements.  Thus, we avoid using “and” when it involves tying two thoughts together.  However, it is acceptable to use “AND”, “OR”, “XOR”, and “NOT” in a logical sense 
 when talking about conditions to which the verb applies.  All logical expressions decompose to either “true” or “false”, resulting in a singular statement. 
-### Examples
 
-of conventions:
+Examples of conventions: 
 
 1. Place conjunctions in italics or in all capitals (AND, OR, XOR, NOT) to indicate that the author intends the conjunction to play a role in a condition. 
 

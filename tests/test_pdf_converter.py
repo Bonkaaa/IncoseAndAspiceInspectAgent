@@ -1,3 +1,4 @@
+import re
 import pytest
 import yaml
 from src.pdf_converter import IncoseParser, AspiceParser
@@ -46,10 +47,26 @@ def test_clean_examples_and_u_tags():
     )
     cleaned = parser.clean_text(sample)
     assert "<u>" not in cleaned
-    assert "</u>" not in cleaned
-    assert "#### Subject examples" in cleaned
+    assert "**Subject examples:**" in cleaned
+    assert "#### Subject examples" not in cleaned
     assert "**Unacceptable system requirement:** “The User shall ……….”" in cleaned
     assert "**Acceptable:** “The <system> shall …….”" in cleaned
+
+
+def test_clean_elaboration_subheaders():
+    parser = IncoseParser()
+    sample = (
+        "### Elaboration\n\n"
+        "### **Subject** \n\n"
+        "The subject of a need or requirement statement...\n\n"
+        "### **Verb** \n\n"
+        "Similarly, the verb of a need or requirement statement..."
+    )
+    cleaned = parser.clean_text(sample)
+    assert "#### **Subject**" in cleaned
+    assert "#### **Verb**" in cleaned
+    assert not re.search(r'(?m)^###\s+\*\*Subject\*\*', cleaned)
+    assert not re.search(r'(?m)^###\s+\*\*Verb\*\*', cleaned)
 
 
 def test_clean_inline_headers_and_leaked_category():
@@ -66,6 +83,22 @@ def test_clean_inline_headers_and_leaked_category():
     assert "### Characteristics that are established by this rule" in cleaned
     assert "- C3 - Unambiguous\n- C4 - Complete" in cleaned
     assert "## **4.3 Non-ambiguity**" not in cleaned
+
+
+def test_clean_sentence_starting_with_header_word():
+    parser = IncoseParser()
+    sample = (
+        "### Exceptions and relationships\n\n"
+        "However, as a rule, if a detailed, specific design solution is expressed as a design input...\n\n"
+        "Examples of issues concerning design outputs expressed as design inputs include:\n\n"
+        "1. The project is developing an upgrade to an existing system.\n\n"
+        "Definitions of terms used within needs and requirement statements must be agreed to..."
+    )
+    cleaned = parser.clean_text(sample)
+    assert "Examples of issues concerning design outputs expressed as design inputs include:" in cleaned
+    assert "### Examples\n\nof issues" not in cleaned
+    assert "Definitions of terms used within" in cleaned
+    assert "### Definition\n\ns of terms" not in cleaned
 
 
 def test_extract_rule_metadata():

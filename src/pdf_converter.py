@@ -59,23 +59,40 @@ class IncoseParser:
             'Activities and concepts associated with this characteristic',
         ]
         for header in section_headers:
-            # Pattern bắt các dạng ## _Header:_ hoặc ## **Header:** hoặc Header: [nội dung cùng dòng]
-            pattern = rf'(?m)^#{{0,4}}\s*[_*]*\s*({re.escape(header)})[ \t:_\\*]*(.*)$'
-            def replace_header(match, h=header):
+            # Pattern 1: Header đứng riêng một dòng (có thể có #, _, *, :, khoảng trắng xung quanh)
+            pattern_standalone = rf'(?m)^[ \t]*#{{0,4}}\s*[_*]*\s*({re.escape(header)})\s*[_*]*\s*[:_*]*[ \t]*$'
+            text = re.sub(pattern_standalone, rf'### {header}', text, flags=re.IGNORECASE)
+
+            # Pattern 2: Header có nội dung đi liền sau trên cùng một dòng
+            # Đối với Characteristics/Rules có thể theo sau bởi C.../R...; với các header khác bắt buộc có dấu :
+            if header in ['Characteristics that are established by this rule', 'Rules that help establish this characteristic']:
+                pattern_inline = rf'(?m)^[ \t]*#{{0,4}}\s*[_*]*\s*({re.escape(header)})\s*[_*]*\s*(?:[:_*]+\s*|(?=\b[CR]\d+\b))\s*(.+)$'
+            else:
+                pattern_inline = rf'(?m)^[ \t]*#{{0,4}}\s*[_*]*\s*({re.escape(header)})\s*[_*]*\s*[:]\s*[_*]*\s*(.+)$'
+
+            def replace_inline(match, h=header):
                 rest = match.group(2).strip(' _*')
                 if rest:
                     return f"### {h}\n\n{rest}"
                 return f"### {h}"
-            text = re.sub(pattern, replace_header, text, flags=re.IGNORECASE)
+            text = re.sub(pattern_inline, replace_inline, text, flags=re.IGNORECASE)
+
+        # 4b. Chuẩn hóa các phân mục con trong Elaboration (như Subject, Verb trong R3) thành header cấp 4
+        text = re.sub(
+            r'(?m)^#{2,3}\s*([_*]*\s*(?:Subject|Verb)\s*[_*]*)[ \t:_]*$',
+            r'#### \1',
+            text,
+            flags=re.IGNORECASE
+        )
 
         # 5. Làm sạch và chuẩn hóa các thẻ gạch chân <u> trong mục Examples
         # 5a. Xóa các biến thể dấu hai chấm kỳ lạ của pymupdf4llm: _<u>:</u>_ hoặc <u>:</u>
         text = re.sub(r'[_*]*\s*<u>\s*:\s*</u>\s*[_*]*', ':', text)
 
-        # 5b. Chuyển các đề mục ví dụ con như <u>Subject examples</u> thành header cấp 4: #### Subject examples
+        # 5b. Chuẩn hóa các đề mục ví dụ con (như Subject examples, Verb examples) thành dạng in đậm: **Header:**
         text = re.sub(
-            r'(?m)^[ \t]*_?<u>\s*([A-Za-z0-9\s-]+examples?)\s*</u>\s*:?[ \t]*$',
-            r'#### \1',
+            r'(?m)^[ \t]*(?:_?<u>\s*([A-Za-z0-9]+(?:\s+[A-Za-z0-9]+)*\s+examples?)\s*</u>|#{3,4}\s*\**\s*([A-Za-z0-9]+(?:\s+[A-Za-z0-9]+)*\s+examples?)\s*\**)[ \t:_]*$',
+            lambda m: f"**{(m.group(1) or m.group(2)).strip()}:**",
             text,
             flags=re.IGNORECASE
         )

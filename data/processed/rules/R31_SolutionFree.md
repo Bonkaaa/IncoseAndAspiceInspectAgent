@@ -66,9 +66,8 @@ The Traffic_Control_System shall limit the Wait_Time of Vehicles traversing the 
 Sometimes solutions have to be described in requirements, even if it is very detailed for a given level, for example if the airworthiness authorities require the use of a specific template for a certain report; or if a naval customer requires that the new naval vessel be equipped with a specific weapon system from a specific supplier; or, if all vehicles in a fleet are required to use the same fuel or the next model make use of a particular engine. In these cases, it is not a premature solution, but a real stakeholder or customer need concerning a constraint.  As such this is acceptable as a design input. 
 
 However, as a rule, if a detailed, specific design solution is expressed as a design input without proper justification, it may be a premature solution and should be communicated as a design output and an appropriate set of design input needs and associated requirements developed that communicate “For what purpose?” which the design output requirements can be traced to. 
-### Examples
 
-of issues concerning design outputs expressed as design inputs include:
+Examples of issues concerning design outputs expressed as design inputs include: 
 
 1. The project is developing an upgrade to an existing system (brownfield SE).  Rather than documenting design input “what” requirements, the project team focuses on known solutions and implementations and documenting design output level requirements as design inputs. This is problematic in that the real “for what purpose?” question is not being addressed and the real design input requirements are not communicated. 
 

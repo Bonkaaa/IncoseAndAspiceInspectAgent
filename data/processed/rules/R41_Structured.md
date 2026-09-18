@@ -36,9 +36,8 @@ See also R29, R39, and R40
 ### Examples
 
 For sets of needs or requirements, an outline can be defined that organizes them in categories or by type. 
-### Examples
 
-of Type/Category of needs and requirements include:
+Examples of Type/Category of needs and requirements include: 
 
 - Function: Functional/Performance. 
 

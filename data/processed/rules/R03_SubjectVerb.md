@@ -19,7 +19,7 @@ related_rules: []
 
 ### Elaboration
 
-### **Subject** 
+#### **Subject**
 
 The subject of a need or requirement statement must be appropriate to the entity to which it _refers_ . 
 
@@ -30,13 +30,13 @@ In some cases, however, a higher-level entity may wish to be prescribe needs and
 
 Consequently, regardless of the entity to which a need or requirement applies, the subject of a need or requirement statement must be appropriate to the entity to which it _refers_ .  To continue our aircraft example above, although many requirements at the business management level will begin with “The ACME Aircraft Company shall …”, the business may therefore wish to state at the business management level a requirement stating that all aircraft developed by the organization shall use an engine with specific characteristics.  For a specific aircraft, child requirements will be written for the appropriate entity that implements the intent of the business management generic requirement.  For the entity dealing with the engine specifically, the system level child requirement would begin “The Aircraft shall….”; and at the subsystem level the child requirement would begin “The Engine shall …” and trace back to the system level parent requirement, which, in turn, would trace back to the business management level constraint as the parent or source. 
 
-### **Verb** 
+#### **Verb**
 
 Similarly, the verb of a need or requirement statement must be appropriate to the subject of the need or requirement for the entity it is stated.  For needs the verbs such as “support”, “process”, “handle”, “track”, “manage”, and “flag” may be appropriate.  However, they are too vague for requirement statements which therefore may not be Unambiguous (C3) nor Verifiable (C7) .  At the business management level, for example, the use of a verb such as “safe”, may be acceptable as long as it is unambiguous at that level, decomposed at the lower levels, and is verifiable at those levels. 
 
 ### Examples
 
-#### Subject examples
+**Subject examples:**
 
 Business management requirements have the form “The <business> shall …”—for example, “ACME_Transport shall …”. 
 
@@ -45,7 +45,7 @@ Business operations requirements on personnel roles have the form: “The <perso
 System requirements have the form "The <system> shall ..."—for example, “The Aircraft shall …” Subsystem level needs have the form “The stakeholders need the subsystem to ……” 
 Subsystem requirements have the form "The <subsystem> shall ..." –for example, once the subsystems are defined: “The Engine shall …”; “The Landing_Gear shall …”. 
 
-#### Verb examples
+**Verb examples:**
 
 System level stakeholder need: “The stakeholders need the system to process data received from [other system] XYZ.” 
 
