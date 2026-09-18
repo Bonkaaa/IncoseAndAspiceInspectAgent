@@ -601,16 +601,7 @@ class AspiceParser:
             "name": "System Requirements Analysis",
             "standard": "Automotive SPICE PAM v4.0",
             "type": "process",
-            "pages": [36, 37],
-            "base_practices": [
-                "SYS.2.BP1: Specify system requirements",
-                "SYS.2.BP2: Structure system requirements",
-                "SYS.2.BP3: Analyze system requirements",
-                "SYS.2.BP4: Analyze the impact on the system context",
-                "SYS.2.BP5: Ensure consistency and establish bidirectional traceability",
-                "SYS.2.BP6: Communicate agreed system requirements and impact on the system context"
-            ],
-            "output_information_items": output_items_meta
+            "pages": [36, 37]
         }
 
         frontmatter = self.generate_frontmatter(metadata)
