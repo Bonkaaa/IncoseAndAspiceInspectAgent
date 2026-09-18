@@ -1,6 +1,6 @@
 import pytest
 import yaml
-from src.pdf_converter import IncoseParser
+from src.pdf_converter import IncoseParser, AspiceParser
 
 
 def test_clean_text():
@@ -204,4 +204,74 @@ def test_integration_generated_dataset():
         body = parts[2].strip()
         assert len(body) > 100
         assert "### Elaboration" in body or "Elaboration" in body
+
+
+def test_aspice_clean_text():
+    parser = AspiceParser()
+    sample = (
+        "© VDA Quality Management Center\n\n"
+        "36\n\n"
+        "PUBLIC\n\n"
+        "# **Process purpose**\n\n"
+        "The purpose is to establish...\n\n"
+        "**SYS.2.BP1: Specify system requirements.** Use the stakeholder requirements...\n"
+    )
+    cleaned = parser.clean_text(sample)
+    assert "VDA Quality Management Center" not in cleaned
+    assert "PUBLIC" not in cleaned
+    assert "## Process Purpose" in cleaned
+    assert "### SYS.2.BP1: Specify system requirements" in cleaned
+
+
+def test_aspice_parse_integration():
+    from pathlib import Path
+    sys2_file = Path("data/processed/aspice/SYS.2_SystemRequirementsAnalysis.md")
+    assert sys2_file.exists(), "SYS.2 markdown file must exist"
+    
+    content = sys2_file.read_text(encoding="utf-8")
+    assert content.startswith("---")
+    parts = content.split("---", 2)
+    meta = yaml.safe_load(parts[1])
+    
+    assert meta["id"] == "SYS.2"
+    assert meta["name"] == "System Requirements Analysis"
+    assert meta["type"] == "process"
+    assert len(meta["base_practices"]) == 6
+    assert "output_information_items" in meta
+    assert len(meta["output_information_items"]) == 5
+    
+    body = parts[2].strip()
+    assert "## Process Purpose" in body
+    assert "## Process Outcomes" in body
+    assert "### SYS.2.BP1: Specify system requirements" in body
+    assert "### SYS.2.BP6: Communicate agreed system requirements and impact on the system context" in body
+    assert "## Work Products & Practice Mapping" in body
+    assert "|**SYS.2 System Requirements Analysis**|Outcome 1|Outcome 2|" in body
+    
+    # Kiểm tra phần Annex B Output Information Items
+    assert "## Output Information Item Characteristics (Annex B)" in body
+    assert "### 17-00: Requirement" in body
+    assert "### 17-54: Requirement Attribute" in body
+    assert "### 15-51: Analysis Results" in body
+    assert "### 13-51: Consistency Evidence" in body
+    assert "### 13-52: Communication Evidence" in body
+    assert "Design Constraint" in body
+    assert "bidirectional traceability" in body
+
+
+def test_aspice_annex_b_extraction():
+    parser = AspiceParser()
+    pdf_path = "data/raw/Automotive-SPICE-PAM-v40.pdf"
+    target_ids = ["17-00", "17-54", "15-51", "13-51", "13-52"]
+    names, md = parser.extract_annex_b_items(pdf_path, target_ids)
+    
+    assert len(names) == 5
+    assert names["17-00"] == "Requirement"
+    assert names["17-54"] == "Requirement Attribute"
+    assert names["15-51"] == "Analysis Results"
+    assert names["13-51"] == "Consistency Evidence"
+    assert names["13-52"] == "Communication Evidence"
+    assert "### 17-00: Requirement" in md
+    assert "- An expectation of functions and capabilities" in md
+
 

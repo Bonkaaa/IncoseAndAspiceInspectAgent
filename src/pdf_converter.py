@@ -435,18 +435,210 @@ class IncoseParser:
         return saved_files
 
 
+class AspiceParser:
+    """
+    Parser chuyển đổi quy trình SYS.2 từ tài liệu Automotive SPICE v4.0
+    thành file Markdown chuẩn hóa kèm bảng mapping và Base Practices.
+    """
+
+    def clean_text(self, md_text: str) -> str:
+        text = md_text
+
+        # 1. Xóa running headers và footers
+        text = re.sub(r'>?\s*©\s*VDA Quality Management Center', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'\bPUBLIC\b', '', text)
+        text = re.sub(r'(?:^|\n)\s*(?:36|37)\s*(?:\n|$)', '\n', text)
+        text = re.sub(r'\*{4,}', '', text)
+
+        # 2. Chuẩn hóa các tiêu đề lớn
+        text = re.sub(r'#\s*\**4\.3\.2\.\s*SYS\.2 System Requirements Analysis\**', '# SYS.2 - System Requirements Analysis', text, flags=re.IGNORECASE)
+        text = re.sub(r'#\s*\**Process ID\**\s*\n+#\s*\**SYS\.2\**', '', text)
+        text = re.sub(r'#\s*\**Process name\**\s*\n+#\s*\**System Requirements Analysis\**', '', text)
+        text = re.sub(r'#\s*\**Process purpose\**', '## Process Purpose', text)
+        text = re.sub(r'#\s*\**Process outcomes\**', '## Process Outcomes', text)
+        text = re.sub(r'#\s*\**Base Practices\**', '## Base Practices', text)
+
+        # 3. Chuẩn hóa các Base Practice thành Header cấp 3
+        text = re.sub(r'\*\*(SYS\.2\.BP\d+:\s*[^\*]+?)\.?\*\*\s*', r'\n\n### \1\n\n', text)
+
+        # 4. Gắn tiêu đề cho bảng ánh xạ Output Information Items & Base Practices
+        text = re.sub(r'(\|?\s*\*\*SYS\.2 System Requirements Analysis\*\*\s*\|)', r'## Work Products & Practice Mapping\n\n\1', text)
+
+        # 5. Dọn dẹp khoảng trắng thừa
+        text = re.sub(r'\n{3,}', '\n\n', text).strip()
+        return text
+
+    def extract_annex_b_items(
+        self,
+        pdf_path: str | Path,
+        target_ids: List[str]
+    ) -> tuple[Dict[str, str], str]:
+        """
+        Trích xuất các đặc tính của Output Information Items từ Annex B
+        (Automotive SPICE PAM v4.0, khoảng trang 122 - 150).
+        """
+        doc = pymupdf.open(str(pdf_path))
+        full_text = ""
+        # Quét các trang thuộc Annex B (khoảng từ trang 122 đến trang 151)
+        start_page = 121
+        end_page = min(151, len(doc))
+        for p in range(start_page, end_page):
+            t = doc[p].get_text()
+            t = re.sub(r'©\s*VDA\s*Quality\s*Management\s*Center', '', t, flags=re.IGNORECASE)
+            t = re.sub(r'\bPUBLIC\b', '', t)
+            t = re.sub(r'^\s*\d{1,3}\s*$', '', t, flags=re.MULTILINE)
+            t = re.sub(r'^\s*ID\s*\n\s*Name\s*\n\s*Characteristics\s*$', '', t, flags=re.MULTILINE)
+            full_text += '\n' + t
+
+        item_pattern = re.compile(
+            r'(?:^|\n)([0-9]{2}-[0-9]{2})\s+([A-Za-z0-9 /,\n\-\(\)]+?)(?:\s*•|\n•)',
+            re.MULTILINE
+        )
+        matches = list(item_pattern.finditer(full_text))
+
+        raw_items: Dict[str, tuple[str, str]] = {}
+        for i, m in enumerate(matches):
+            item_id = m.group(1)
+            if item_id in target_ids:
+                start = m.start()
+                name = re.sub(r'\s+', ' ', m.group(2)).strip()
+                end = matches[i + 1].start() if i + 1 < len(matches) else len(full_text)
+                content = full_text[start:end].strip()
+                raw_items[item_id] = (name, content)
+
+        # Định dạng từng item thành markdown bullets
+        formatted_blocks: List[str] = []
+        parsed_names: Dict[str, str] = {}
+
+        for item_id in target_ids:
+            if item_id not in raw_items:
+                continue
+            name, raw_content = raw_items[item_id]
+            parsed_names[item_id] = name
+
+            idx = raw_content.find('•')
+            content = raw_content[idx:] if idx != -1 else raw_content
+            lines = content.splitlines()
+
+            item_lines = [f"### {item_id}: {name}\n"]
+            current_level = None  # 'bullet', 'sub', 'note'
+            current_tokens: List[str] = []
+
+            def flush():
+                nonlocal current_level, current_tokens
+                if not current_tokens:
+                    return
+                text = ' '.join(current_tokens).strip()
+                text = re.sub(r'(\w+)-\s+(\w+)', r'\1-\2', text)
+                if current_level == 'bullet':
+                    item_lines.append(f"- {text}")
+                elif current_level == 'sub':
+                    item_lines.append(f"  - {text}")
+                elif current_level == 'note':
+                    item_lines.append(f"\n_{text}_\n")
+                current_tokens = []
+                current_level = None
+
+            for line in lines:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                if stripped == '•' or stripped.startswith('•'):
+                    flush()
+                    current_level = 'bullet'
+                    rem = stripped.lstrip('•').strip()
+                    if rem:
+                        current_tokens.append(rem)
+                elif stripped == '-' or stripped.startswith('- '):
+                    flush()
+                    current_level = 'sub'
+                    rem = stripped.lstrip('-').strip()
+                    if rem:
+                        current_tokens.append(rem)
+                elif stripped.lower().startswith('note:') or stripped.lower().startswith('note :'):
+                    flush()
+                    current_level = 'note'
+                    current_tokens.append(stripped)
+                else:
+                    if current_level is not None:
+                        current_tokens.append(stripped)
+            flush()
+            formatted_blocks.append('\n'.join(item_lines))
+
+        header = (
+            "## Output Information Item Characteristics (Annex B)\n\n"
+            "The following characteristics define the expected content and structure "
+            "of the work products/information items produced by SYS.2, as specified in "
+            "Automotive SPICE PAM v4.0 Annex B:\n\n"
+        )
+        md_annex = header + '\n\n'.join(formatted_blocks)
+        return parsed_names, md_annex
+
+    def generate_frontmatter(self, metadata: Dict[str, Any]) -> str:
+        yaml_str = yaml.dump(metadata, sort_keys=False, allow_unicode=True)
+        return f"---\n{yaml_str}---\n\n"
+
+    def parse_sys2(
+        self,
+        pdf_path: str = "data/raw/Automotive-SPICE-PAM-v40.pdf",
+        output_dir: str = "data/processed"
+    ) -> Path:
+        out_dir = Path(output_dir) / "aspice"
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # Trang in 36 và 37 ứng với index 35 và 36 trong file PDF
+        md_raw = pymupdf4llm.to_markdown(pdf_path, pages=[35, 36])
+        cleaned_body = self.clean_text(md_raw)
+
+        # Trích xuất Annex B cho các Output Information Items của SYS.2
+        target_item_ids = ["17-00", "17-54", "15-51", "13-51", "13-52"]
+        item_names, annex_b_md = self.extract_annex_b_items(pdf_path, target_item_ids)
+
+        output_items_meta = [f"{tid} {item_names.get(tid, '')}".strip() for tid in target_item_ids]
+
+        metadata = {
+            "id": "SYS.2",
+            "name": "System Requirements Analysis",
+            "standard": "Automotive SPICE PAM v4.0",
+            "type": "process",
+            "pages": [36, 37],
+            "base_practices": [
+                "SYS.2.BP1: Specify system requirements",
+                "SYS.2.BP2: Structure system requirements",
+                "SYS.2.BP3: Analyze system requirements",
+                "SYS.2.BP4: Analyze the impact on the system context",
+                "SYS.2.BP5: Ensure consistency and establish bidirectional traceability",
+                "SYS.2.BP6: Communicate agreed system requirements and impact on the system context"
+            ],
+            "output_information_items": output_items_meta
+        }
+
+        frontmatter = self.generate_frontmatter(metadata)
+        target_file = out_dir / "SYS.2_SystemRequirementsAnalysis.md"
+        full_content = frontmatter + cleaned_body + "\n\n" + annex_b_md + "\n"
+        target_file.write_text(full_content, encoding="utf-8")
+        return target_file
+
+
 def main():
-    pdf_path = "data/raw/INCOSE_RWG_Guide_to_Writing_Requirements_V3.1_041822.pdf"
+    incose_pdf = "data/raw/INCOSE_RWG_Guide_to_Writing_Requirements_V3.1_041822.pdf"
+    aspice_pdf = "data/raw/Automotive-SPICE-PAM-v40.pdf"
     output_dir = "data/processed"
 
-    print(f"Bắt đầu chuyển đổi: {pdf_path}")
-    parser = IncoseParser()
-    results = parser.parse_pdf(pdf_path, output_dir)
+    print("=" * 60)
+    print("1. Parsing INCOSE Guide...")
+    if Path(incose_pdf).exists():
+        incose_parser = IncoseParser()
+        results = incose_parser.parse_pdf(incose_pdf, output_dir)
+        print(f"Characteristics: {len(results['characteristics'])} files")
+        print(f"Rules: {len(results['rules'])} files")
 
-    print("\n--- KẾT QUẢ CHUYỂN ĐỔI ---")
-    print(f"Characteristics: {len(results['characteristics'])} files tạo thành công tại {output_dir}/characteristics")
-    print(f"Rules: {len(results['rules'])} files tạo thành công tại {output_dir}/rules")
-    print("Hoàn tất!")
+    print("\n2. Parsing Automotive SPICE SYS.2...")
+    if Path(aspice_pdf).exists():
+        aspice_parser = AspiceParser()
+        sys2_file = aspice_parser.parse_sys2(aspice_pdf, output_dir)
+        print(f"ASPICE SYS.2: {sys2_file}")
+    print("=" * 60)
 
 
 if __name__ == '__main__':
